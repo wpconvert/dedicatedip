@@ -480,7 +480,7 @@ body::before {
     </div>
 
     <div class="timer-caption">
-      Total waktu sejak koneksi berhasil aktif
+      Status konfigurasi IP global DIH
     </div>
 
   </div>
@@ -497,11 +497,11 @@ body::before {
   </button>
 
   <div class="message" id="message">
-    Periksa IP terlebih dahulu untuk melanjutkan.
+    Periksa IP terlebih dahulu untuk menyimpan konfigurasi.
   </div>
 
   <div class="footer">
-    <span>Dedicated IP Home Made · VERSION 1.0</span>
+    <span>Dedicated IP Home Made · VERSION 1.1</span>
     <span>◈ CONNECTION INTERFACE</span>
   </div>
 
@@ -509,175 +509,139 @@ body::before {
 </div>
 
 <script>
-
+/* Isi URL ini setelah backend DIH tersedia di VPS. Gunakan HTTPS. */
+const API_BASE = "https://YOUR-VPS-DOMAIN";
 let ipData = null;
-let connected = false;
-let seconds = 0;
-let timerInterval = null;
+const $ = (id) => document.getElementById(id);
 
-// Check IP and retrieve geolocation
-
-async function checkIP() {
-
-  const ip = document.getElementById("ipInput").value.trim();
-  const location = document.getElementById("location");
-  const message = document.getElementById("message");
-  const btn = document.getElementById("connectBtn");
-
-  if (!ip) {
-    message.textContent = "Masukkan alamat IP terlebih dahulu.";
-    return;
-  }
-
-  const ipRegex =
-    /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/;
-
-  if (!ipRegex.test(ip)) {
-    message.textContent = "Format IPv4 tidak valid.";
-    return;
-  }
-
-  location.innerHTML = `
-    <div class="empty-location">
-      <div class="pin">⏳</div>
-      Sedang memeriksa lokasi IP...
-    </div>
-  `;
-
-  btn.disabled = true;
-  message.textContent = "Menghubungi layanan geolokasi IP...";
-
-  try {
-
-    const response = await fetch(
-      "https://ipwho.is/" + encodeURIComponent(ip)
-    );
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || "IP tidak dapat diperiksa.");
-    }
-
-    ipData = data;
-
-    const flag = data.flag?.emoji || "🌐";
-    const country = data.country || "Tidak diketahui";
-    const city = data.city || "Kota tidak diketahui";
-
-    location.innerHTML = `
-      <div class="location-content">
-        <div class="flag">${flag}</div>
-        <div>
-          <div class="location-name">${escapeHTML(country)}</div>
-          <div class="location-city">
-            ${escapeHTML(city)} · ${escapeHTML(data.region || "")}
-          </div>
-        </div>
-        <div class="location-badge">✓ VERIFIED DATA</div>
-      </div>
-    `;
-
-    btn.disabled = false;
-    message.textContent =
-      "Informasi IP berhasil diperoleh. Siap dikonfigurasi.";
-
-  } catch (error) {
-
-    ipData = null;
-
-    location.innerHTML = `
-      <div class="empty-location">
-        <div class="pin">⚠️</div>
-        Lokasi IP tidak dapat ditemukan.
-      </div>
-    `;
-
-    btn.disabled = true;
-    message.textContent = error.message;
-
-  }
+function setMessage(text, isError = false) {
+  const el = $("message");
+  el.textContent = text;
+  el.style.color = isError ? "#fca5a5" : "";
 }
-
-// Escape external text before placing it into HTML
-
+function setStatus(text, active = false) {
+  $("status").textContent = text;
+  $("status").classList.toggle("active", active);
+}
 function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   })[char]);
 }
-
-// Simulated connection button
-
-function toggleConnection() {
-
-  if (!ipData) return;
-
-  const btn = document.getElementById("connectBtn");
-  const status = document.getElementById("status");
-  const dashboard = document.getElementById("dashboard");
-  const message = document.getElementById("message");
-
-  if (!connected) {
-
-    connected = true;
-    seconds = 0;
-
-    btn.textContent = "DISCONNECT";
-    btn.classList.add("connected");
-
-    status.textContent = "CONNECTED";
-    status.classList.add("active");
-
-    dashboard.classList.add("connected-glow");
-
-    message.textContent =
-      "SIMULATION ACTIVE · IP belum diubah.";
-
-    timerInterval = setInterval(updateTimer, 1000);
-
-  } else {
-
-    connected = false;
-
-    clearInterval(timerInterval);
-
-    btn.textContent = "CONNECT";
-    btn.classList.remove("connected");
-
-    status.textContent = "DISCONNECTED";
-    status.classList.remove("active");
-
-    dashboard.classList.remove("connected-glow");
-
-    message.textContent = "Simulasi koneksi dihentikan.";
-
-    document.getElementById("timer").textContent =
-      "00 : 00 : 00";
-
+function validApiBase() {
+  return API_BASE.startsWith("https://") && !API_BASE.includes("YOUR-VPS-DOMAIN");
+}
+async function apiRequest(path, options = {}) {
+  if (!validApiBase()) {
+    throw new Error("Backend VPS belum dikonfigurasi. URL API diisi setelah VPS siap.");
   }
-
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+  });
+  let data;
+  try { data = await response.json(); }
+  catch { throw new Error("Backend mengirim respons yang tidak valid."); }
+  if (!response.ok) throw new Error(data.detail || `Backend error (${response.status}).`);
+  return data;
+}
+function renderLocation(data) {
+  $("location").innerHTML = `
+    <div class="location-content">
+      <div class="flag">🌐</div>
+      <div>
+        <div class="location-name">${escapeHTML(data.country || "Tidak diketahui")}</div>
+        <div class="location-city">${escapeHTML(data.city || "Kota tidak diketahui")} · ${escapeHTML(data.region || "")}</div>
+        <div class="location-city">ISP: ${escapeHTML(data.isp || "Tidak diketahui")}</div>
+        <div class="location-city">IP: ${escapeHTML(data.ip_address || "")}</div>
+      </div>
+      <div class="location-badge">✓ GEOIP DATA</div>
+    </div>`;
 }
 
-// Connection timer
+// Memeriksa informasi IP melalui backend DIH.
+async function checkIP() {
+  const ip = $("ipInput").value.trim();
+  const btn = $("connectBtn");
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/;
 
-function updateTimer() {
+  if (!ip) return setMessage("Masukkan alamat IP terlebih dahulu.", true);
+  if (!ipv4Regex.test(ip)) return setMessage("Format IPv4 tidak valid.", true);
 
-  seconds++;
+  ipData = null;
+  btn.disabled = true;
+  $("location").innerHTML = `<div class="empty-location"><div class="pin">⏳</div>Memeriksa IP melalui backend DIH...</div>`;
+  setMessage("Menghubungi backend DIH...");
 
-  const h = String(Math.floor(seconds / 3600)).padStart(2,"0");
-  const m = String(Math.floor((seconds % 3600) / 60)).padStart(2,"0");
-  const s = String(seconds % 60).padStart(2,"0");
-
-  document.getElementById("timer").textContent =
-    `${h} : ${m} : ${s}`;
-
+  try {
+    ipData = await apiRequest("/api/ip-config/check", {
+      method: "POST",
+      body: JSON.stringify({ ip_address: ip })
+    });
+    renderLocation(ipData);
+    btn.disabled = false;
+    btn.textContent = "SAVE IP CONFIGURATION";
+    setStatus("IP CHECKED");
+    setMessage("Informasi IP ditemukan. Klik SAVE untuk menyimpan konfigurasi global.");
+  } catch (error) {
+    $("location").innerHTML = `<div class="empty-location"><div class="pin">⚠️</div>${escapeHTML(error.message)}</div>`;
+    btn.disabled = true;
+    setStatus("BACKEND UNAVAILABLE");
+    setMessage(error.message, true);
+  }
 }
 
+// Menyimpan IP sebagai konfigurasi global. Ini belum mengubah IP publik browser.
+async function toggleConnection() {
+  if (!ipData) return setMessage("Periksa IP terlebih dahulu.", true);
+  const btn = $("connectBtn");
+  btn.disabled = true;
+  setMessage("Menyimpan konfigurasi IP global...");
+
+  try {
+    const result = await apiRequest("/api/ip-config", {
+      method: "PUT",
+      body: JSON.stringify({ ip_address: ipData.ip_address })
+    });
+    btn.disabled = false;
+    btn.textContent = "CONFIGURATION SAVED";
+    setStatus("CONFIGURED", true);
+    $("dashboard").classList.add("connected-glow");
+    const loc = result.location || {};
+    setMessage(`Konfigurasi tersimpan: ${loc.city || ""}, ${loc.country || ""}. Trafik browser belum diarahkan melalui IP ini.`);
+  } catch (error) {
+    btn.disabled = false;
+    setStatus("SAVE FAILED");
+    setMessage(error.message, true);
+  }
+}
+
+// Memuat konfigurasi tersimpan saat dashboard dibuka.
+async function loadSavedConfig() {
+  if (!validApiBase()) {
+    setMessage("Dashboard siap. Backend VPS akan dihubungkan setelah tersedia.");
+    return;
+  }
+  try {
+    const config = await apiRequest("/api/ip-config");
+    if (config.ip_address && config.location) {
+      ipData = { ip_address: config.ip_address, ...config.location };
+      $("ipInput").value = config.ip_address;
+      renderLocation(ipData);
+      $("connectBtn").disabled = false;
+      $("connectBtn").textContent = "SAVE IP CONFIGURATION";
+      setStatus("CONFIGURATION LOADED");
+      setMessage("Konfigurasi IP tersimpan berhasil dimuat.");
+    }
+  } catch {
+    setStatus("BACKEND OFFLINE");
+    setMessage("Backend belum dapat dihubungi. Periksa URL VPS dan status API.");
+  }
+}
+$("ipInput").addEventListener("keydown", event => {
+  if (event.key === "Enter") checkIP();
+});
+loadSavedConfig();
 </script>
 
 </body>
