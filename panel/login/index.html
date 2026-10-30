@@ -1,0 +1,285 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIH - Secure Login</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      color: #f8fafc;
+      background:
+        radial-gradient(circle at 15% 15%, #172554 0, transparent 35%),
+        radial-gradient(circle at 85% 85%, #164e63 0, transparent 35%),
+        #080d18;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 410px;
+      padding: 38px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 20px;
+      background: rgba(15, 23, 42, .88);
+      box-shadow: 0 25px 80px rgba(0,0,0,.4);
+    }
+
+    .logo {
+      width: 55px;
+      height: 55px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 25px;
+      border-radius: 15px;
+      color: white;
+      font-size: 21px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #2563eb, #0891b2);
+    }
+
+    h1 {
+      font-size: 25px;
+      margin-bottom: 9px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .password-wrap {
+      position: relative;
+    }
+
+    input {
+      width: 100%;
+      height: 49px;
+      padding: 0 75px 0 15px;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      outline: none;
+      color: white;
+      background: #0b1220;
+      font-size: 14px;
+    }
+
+    input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,.13);
+    }
+
+    .toggle {
+      position: absolute;
+      top: 0;
+      right: 12px;
+      height: 49px;
+      border: 0;
+      color: #60a5fa;
+      background: transparent;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .login-btn {
+      width: 100%;
+      height: 49px;
+      margin-top: 22px;
+      border: 0;
+      border-radius: 10px;
+      color: white;
+      background: linear-gradient(135deg, #2563eb, #0891b2);
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .login-btn:hover {
+      filter: brightness(1.12);
+      transform: translateY(-1px);
+    }
+
+    .login-btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .message {
+      display: none;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 9px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .message.error {
+      display: block;
+      color: #fca5a5;
+      background: rgba(127,29,29,.25);
+      border: 1px solid rgba(248,113,113,.2);
+    }
+
+    .message.success {
+      display: block;
+      color: #86efac;
+      background: rgba(20,83,45,.25);
+      border: 1px solid rgba(74,222,128,.2);
+    }
+
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 28px 23px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="login-card">
+    <div class="logo">DIH</div>
+
+    <h1>Welcome Back</h1>
+    <p class="subtitle">
+      Masukkan password untuk mengakses
+      Dedicated IP Homemade Dashboard.
+    </p>
+
+    <form id="loginForm">
+      <label for="password">Access Password</label>
+
+      <div class="password-wrap">
+        <input
+          type="password"
+          id="password"
+          placeholder="Masukkan password"
+          autocomplete="current-password"
+          required
+        >
+        <button
+          type="button"
+          class="toggle"
+          id="togglePassword"
+        >Tampilkan</button>
+      </div>
+
+      <button type="submit" class="login-btn" id="loginBtn">
+        Login to Dashboard
+      </button>
+
+      <div id="message" class="message"></div>
+    </form>
+
+    <div class="footer">
+      DEDICATED IP HOMEMADE · SECURE ACCESS
+    </div>
+  </main>
+
+  <script>
+    // Akan diisi setelah backend DIH siap.
+    const API_BASE = "ISI_URL_API_NANTI";
+
+    const form = document.getElementById("loginForm");
+    const passwordInput = document.getElementById("password");
+    const togglePassword = document.getElementById("togglePassword");
+    const loginBtn = document.getElementById("loginBtn");
+    const message = document.getElementById("message");
+
+    togglePassword.addEventListener("click", () => {
+      const isHidden = passwordInput.type === "password";
+      passwordInput.type = isHidden ? "text" : "password";
+      togglePassword.textContent = isHidden ? "Sembunyikan" : "Tampilkan";
+    });
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = "message " + type;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const password = passwordInput.value;
+
+      if (!password) {
+        showMessage("Masukkan password terlebih dahulu.", "error");
+        return;
+      }
+
+      if (API_BASE === "https://script.google.com/macros/s/AKfycbyEON34bZuim-jTUnJ_82nlZTvWZa34kNCfBgXAFmpAe951YjRwnyIoJiZ317T-bBMSpg/exec") {
+        showMessage(
+        );
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Memeriksa...";
+      message.className = "message";
+
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ password })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success || !result.token) {
+          throw new Error("Password salah atau akses ditolak.");
+        }
+
+        // Token sesi sementara, bukan password.
+        sessionStorage.setItem("dih_session", result.token);
+
+        showMessage("Login berhasil. Membuka dashboard...", "success");
+
+        window.location.href = "https://wpconvert.github.io/dedicatedip/panel/dashboard/index.html";
+
+      } catch (error) {
+        showMessage(
+          error.message || "Tidak dapat terhubung ke server.",
+          "error"
+        );
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Login to Dashboard";
+      }
+    });
+  </script>
+
+</body>
+</html>
